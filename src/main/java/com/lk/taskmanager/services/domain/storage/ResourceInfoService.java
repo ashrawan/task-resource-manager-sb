@@ -1,7 +1,8 @@
 package com.lk.taskmanager.services.domain.storage;
 
 import com.lk.taskmanager.entities.ResourceInfoEntity;
-import com.lk.taskmanager.services.generic.GenericResponseDTO;
+import com.lk.taskmanager.services.generic.dtos.GenericFilterRequestDTO;
+import com.lk.taskmanager.services.generic.dtos.GenericResponseDTO;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
@@ -10,13 +11,15 @@ import java.util.List;
 
 public interface ResourceInfoService {
 
-    List<ResourceInfoEntity> getAllResourceByOwnerId(Pageable pageable, Long resourceOwnerId);
+    GenericResponseDTO<List<ResourceInfoEntity>> getAllResourceByOwnerId(Pageable pageable, Long resourceOwnerId);
 
-    ResourceInfoEntity getResourceById(Long resourceId);
+    GenericResponseDTO<ResourceInfoEntity> getResourceById(Long resourceId);
 
-    GenericResponseDTO<?> storeResource(MultipartFile file);
+    GenericResponseDTO<ResourceInfoEntity> storeResource(MultipartFile file);
 
-    Resource loadResourceByResourceNameAndOwnerId(String resourceName, Long resourceOwnerId);
+    Resource downloadResourceByResourceId(Long resourceId);
+
+    GenericResponseDTO<List<ResourceInfoEntity>> filterResourceInfoData(GenericFilterRequestDTO<ResourceInfoEntity> genericFilterRequestDTO, Pageable pageable);
 
     GenericResponseDTO<?> deleteResourceById(Long id);
 }

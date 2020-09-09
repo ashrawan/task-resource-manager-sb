@@ -3,7 +3,7 @@ package com.lk.taskmanager.utils;
 public class Enums {
 
     public enum UserRoleStatus {
-        ADMIN, USER
+        ROLE_ADMIN, ROLE_USER
     }
 
     public enum UserStatus {
@@ -15,5 +15,7 @@ public class Enums {
     public enum RawDataStatus {
         ACTIVE, INACTIVE
     }
+
+
 
 }

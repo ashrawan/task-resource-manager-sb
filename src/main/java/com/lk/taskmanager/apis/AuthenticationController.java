@@ -1,8 +1,9 @@
 package com.lk.taskmanager.apis;
 
 import com.lk.taskmanager.services.auth.AuthenticationService;
+import com.lk.taskmanager.services.auth.dtos.AuthResponseDTO;
 import com.lk.taskmanager.services.auth.dtos.LoginRequestDTO;
-import com.lk.taskmanager.services.generic.GenericResponseDTO;
+import com.lk.taskmanager.services.generic.dtos.GenericResponseDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +23,8 @@ public class AuthenticationController {
     @PostMapping("/login")
     public ResponseEntity<?> loginUser(@RequestBody LoginRequestDTO loginRequest) {
         log.info("Authentication API: login requested by user: ", loginRequest.getUsername());
-        return new ResponseEntity<>(authenticationService.loginUser(loginRequest), HttpStatus.OK);
+        GenericResponseDTO<AuthResponseDTO> genericResponse = authenticationService.loginUser(loginRequest);
+        return new ResponseEntity<>(genericResponse, genericResponse.getHttpStatus());
     }
 
     @GetMapping("forgot-password")

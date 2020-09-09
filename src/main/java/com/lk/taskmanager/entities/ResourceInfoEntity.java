@@ -2,10 +2,14 @@ package com.lk.taskmanager.entities;
 
 import com.lk.taskmanager.utils.Enums;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.scheduling.config.Task;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "resources_info")
@@ -29,6 +33,14 @@ public class ResourceInfoEntity {
     @ManyToOne
     @JoinColumn(name = "resource_owner", nullable = false)
     private UserEntity resourceOwner;
+
+    @ManyToMany
+    @JoinTable(
+            name = "resource_access_info",
+            joinColumns = {@JoinColumn(name = "resource_id")},
+            inverseJoinColumns = {@JoinColumn(name = "user_id")}
+    )
+    private Set<UserEntity> userAccessList = new HashSet<>();
 
     @Column(name = "created_at", nullable = false)
     @CreationTimestamp

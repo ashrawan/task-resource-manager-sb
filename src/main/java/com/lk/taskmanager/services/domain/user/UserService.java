@@ -2,22 +2,27 @@ package com.lk.taskmanager.services.domain.user;
 
 import com.lk.taskmanager.entities.UserEntity;
 import com.lk.taskmanager.services.domain.user.dtos.UpdatePasswordRequestDTO;
-import com.lk.taskmanager.services.generic.GenericResponseDTO;
-import org.springframework.data.domain.Page;
+import com.lk.taskmanager.services.generic.dtos.GenericFilterRequestDTO;
+import com.lk.taskmanager.services.generic.dtos.GenericResponseDTO;
 import org.springframework.data.domain.Pageable;
+
+import java.util.List;
 
 public interface UserService {
 
-    Page<UserEntity> getAllUsers(Pageable pageable);
+    GenericResponseDTO<List<UserEntity>> getAllUsers(Pageable pageable);
 
-    UserEntity findByUsername(String username);
+    GenericResponseDTO<UserEntity> findByUsername(String username);
 
-    UserEntity getUserById(Long id);
+    GenericResponseDTO<UserEntity> getUserById(Long id);
 
-    UserEntity createUser(UserEntity userEntity);
+    GenericResponseDTO<UserEntity> createUser(UserEntity userEntity);
 
-    UserEntity updateUser(UserEntity userEntity);
+    GenericResponseDTO<UserEntity> updateUser(UserEntity userEntity);
 
     GenericResponseDTO<?> updatePassword(UpdatePasswordRequestDTO updatePasswordRequest);
+
+    GenericResponseDTO<List<UserEntity>> filterUserData(GenericFilterRequestDTO<UserEntity> genericFilterRequestDTO, Pageable pageable);
+
 
 }

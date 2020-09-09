@@ -15,18 +15,17 @@ import java.time.LocalDateTime;
 @Table(name = "users")
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode
 public class UserEntity {
 
     @Id
-    @Column(name = "id")
+    @Column(name = "id", updatable = false)
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "full_name")
+    @Column(name = "full_name", nullable = false)
     private String fullName;
 
-    @Column(name = "username")
+    @Column(name = "username", nullable = false, unique = true, updatable = false)
     private String username;
 
     @JsonProperty(value = "password", access = JsonProperty.Access.WRITE_ONLY)
@@ -36,7 +35,7 @@ public class UserEntity {
     @Column(name = "role", nullable = false)
     private String role;
 
-    @Column(name = "phone_number", nullable = false)
+    @Column(name = "phone_number")
     private String phoneNumber;
 
     @Column(name = "status", nullable = false)
@@ -49,7 +48,7 @@ public class UserEntity {
     private LocalDateTime createdAt;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at")
     @CreationTimestamp
     private LocalDateTime updatedAt;
 

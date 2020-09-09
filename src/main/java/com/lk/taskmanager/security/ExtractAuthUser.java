@@ -1,6 +1,7 @@
 package com.lk.taskmanager.security;
 
 import com.lk.taskmanager.entities.UserEntity;
+import com.lk.taskmanager.services.generic.StringToEnumConverter;
 import com.lk.taskmanager.utils.Enums;
 import com.lk.taskmanager.utils.exceptions.AppExceptionConstants;
 import com.lk.taskmanager.utils.exceptions.UnAuthorizedAccessException;
@@ -9,38 +10,40 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 public class ExtractAuthUser {
 
-    public static UserEntity getCurrentUser(){
-        return getCurrentUserEntity();
+    public static UserEntity getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return (UserEntity) authentication.getPrincipal();
     }
 
-    public static boolean isOwner(Long userId){
-        UserEntity userEntity = getCurrentUserEntity();
-        return userEntity.getId() == userId;
+    public static boolean isOwner(Long userId) {
+        UserEntity userEntity = getCurrentUser();
+        if (userEntity.getId() == userId) {
+            return true;
+        }
+        return false;
+    }
+
+    public static boolean isAdmin() {
+        UserEntity userEntity = getCurrentUser();
+        boolean isAdmin = userEntity.getRole().equals(String.valueOf(Enums.UserRoleStatus.ROLE_ADMIN));
+        return isAdmin;
     }
 
     public static Long resolveUserId(Long userId) {
-        if(userId == null) {
+        if (userId == null) {
             userId = ExtractAuthUser.getCurrentUser().getId();
         }
         return userId;
     }
 
-    public static Long resolveHasAdminAccessOrIsOwner(Long resourceOwnerId) {
-        if(resourceOwnerId == null){
-            resourceOwnerId = ExtractAuthUser.getCurrentUser().getId();
+    public static boolean hasAdminAccessOrIsOwner(Long resourceOwnerId) {
+        if (resourceOwnerId == null) {
+            return false;
         }
-        UserEntity userEntity = getCurrentUserEntity();
-        boolean isAdmin = userEntity.getRole().equals(String.valueOf(Enums.UserRoleStatus.ADMIN));
-        boolean ownResources = isOwner(resourceOwnerId);
-        if(!isAdmin && !ownResources) {
-            throw new UnAuthorizedAccessException(AppExceptionConstants.UNAUTHORIZED_ACCESS);
+        if (isAdmin() || isOwner(resourceOwnerId)) {
+            return true;
         }
-        return resourceOwnerId;
-    }
-
-    private static UserEntity getCurrentUserEntity(){
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return (UserEntity) authentication.getPrincipal();
+        return false;
     }
 
 }

@@ -1,11 +1,14 @@
 package com.lk.taskmanager.security;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreType;
 import com.lk.taskmanager.entities.UserEntity;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 
+@JsonIgnoreType
 public class CustomUserDetails extends UserEntity implements UserDetails {
 
     public CustomUserDetails(final UserEntity user) {
@@ -14,8 +17,9 @@ public class CustomUserDetails extends UserEntity implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-
-        return null;
+        Collection<GrantedAuthority> grantedAuthorities = AuthorityUtils
+                .commaSeparatedStringToAuthorityList(super.getRole());
+        return grantedAuthorities;
     }
 
     @Override

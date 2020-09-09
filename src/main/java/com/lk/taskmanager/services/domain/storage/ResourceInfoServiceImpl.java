@@ -4,12 +4,14 @@ import com.lk.taskmanager.configuration.StorageConfig;
 import com.lk.taskmanager.entities.ResourceInfoEntity;
 import com.lk.taskmanager.entities.UserEntity;
 import com.lk.taskmanager.repository.ResourceInfoRepository;
-import com.lk.taskmanager.repository.UserRepository;
+import com.lk.taskmanager.repository.TaskRepository;
 import com.lk.taskmanager.security.ExtractAuthUser;
-import com.lk.taskmanager.services.generic.GenericResponseDTO;
-import com.lk.taskmanager.services.generic.MessageCodeUtil;
+import com.lk.taskmanager.services.generic.GenericSpecification;
 import com.lk.taskmanager.services.generic.ResponseBuilder;
+import com.lk.taskmanager.services.generic.dtos.GenericFilterRequestDTO;
+import com.lk.taskmanager.services.generic.dtos.GenericResponseDTO;
 import com.lk.taskmanager.utils.Enums;
+import com.lk.taskmanager.utils.MessageCodeUtil;
 import com.lk.taskmanager.utils.exceptions.AppExceptionConstants;
 import com.lk.taskmanager.utils.exceptions.LKAppException;
 import com.lk.taskmanager.utils.exceptions.ResourceNotFoundException;
@@ -18,7 +20,9 @@ import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,25 +40,21 @@ public class ResourceInfoServiceImpl implements ResourceInfoService {
 
     private final StorageConfig storageConfig;
     private final ResourceInfoRepository resourceInfoRepository;
-    private final UserRepository userRepository;
+    private final TaskRepository taskRepository;
 
     @Override
-    public List<ResourceInfoEntity> getAllResourceByOwnerId(Pageable pageable, Long resourceOwnerId) {
+    public GenericResponseDTO<List<ResourceInfoEntity>> getAllResourceByOwnerId(Pageable pageable, Long resourceOwnerId) {
         List<ResourceInfoEntity> resourceInfoList = resourceInfoRepository.findAllByResourceOwnerId(pageable, resourceOwnerId);
-        return resourceInfoList;
+        return ResponseBuilder.buildSuccessResponse(resourceInfoList, resourceInfoList.size());
     }
 
-    public ResourceInfoEntity getResourceById(Long resourceId) {
+    public GenericResponseDTO<ResourceInfoEntity> getResourceById(Long resourceId) {
         ResourceInfoEntity resourceInfo = resourceInfoRepository.findById(resourceId)
                 .orElseThrow(() -> new ResourceNotFoundException(AppExceptionConstants.REQUESTED_RESOURCE_NOT_FOUND));
-        return resourceInfo;
+        return ResponseBuilder.buildSuccessResponse(resourceInfo);
     }
 
-//    public ResourceInfoEntity filterResource(String fileName) {
-//        return null;
-//    }
-
-    public GenericResponseDTO<?> storeResource(MultipartFile file) {
+    public GenericResponseDTO<ResourceInfoEntity> storeResource(MultipartFile file) {
         String fileName = StringUtils.cleanPath(file.getOriginalFilename());
         fileName = System.currentTimeMillis() + "-" + fileName;
         try {
@@ -76,11 +76,30 @@ public class ResourceInfoServiceImpl implements ResourceInfoService {
 
     }
 
-    public Resource loadResourceByResourceNameAndOwnerId(String fileName, Long resourceOwnerId) {
+    private GenericResponseDTO<ResourceInfoEntity> getResourceByIdIfUserInAccessList(Long resourceId) {
+        ResourceInfoEntity resourceInfoEntity = new ResourceInfoEntity();
+        resourceInfoEntity.setId(resourceId);
+        Long currentUserId = ExtractAuthUser.getCurrentUser().getId();
+        Specification<ResourceInfoEntity> specUserHasAccessToResources = ResourceSearchSpecification.getByUserHasAccessToResources(currentUserId, resourceId);
+        List<ResourceInfoEntity> resourceInfoEntities = resourceInfoRepository.findAll(Specification.where(specUserHasAccessToResources));
+        if (resourceInfoEntities.size() < 1) {
+            throw new UnAuthorizedAccessException(AppExceptionConstants.UNAUTHORIZED_ACCESS);
+        }
+        return ResponseBuilder.buildSuccessResponse(resourceInfoEntities.get(0));
+    }
+
+    public Resource downloadResourceByResourceId(Long resourceId) {
         try {
-            UserEntity userEntity = userRepository.findById(resourceOwnerId)
-                    .orElseThrow(() -> new ResourceNotFoundException(AppExceptionConstants.USER_RECORD_NOT_FOUND));
-            Path filePath = storageConfig.getUserDirectory(userEntity.getUsername()).resolve(fileName).normalize();
+            ResourceInfoEntity resourceInfo = resourceInfoRepository.findById(resourceId)
+                    .orElseThrow(() -> new ResourceNotFoundException(AppExceptionConstants.REQUESTED_RESOURCE_NOT_FOUND));
+            if (!ExtractAuthUser.isAdmin()) {
+                if (!ExtractAuthUser.isOwner(resourceInfo.getResourceOwner().getId())) {
+                    UserEntity userEntity = new UserEntity(ExtractAuthUser.getCurrentUser());
+                    getResourceByIdIfUserInAccessList(resourceId);
+                }
+            }
+            UserEntity resourceOwner = resourceInfo.getResourceOwner();
+            Path filePath = storageConfig.getUserDirectory(resourceOwner.getUsername()).resolve(resourceInfo.getResourceName()).normalize();
             Resource resource = new UrlResource(filePath.toUri());
             if (resource.exists()) {
                 return resource;
@@ -92,22 +111,27 @@ public class ResourceInfoServiceImpl implements ResourceInfoService {
         }
     }
 
+    public GenericResponseDTO<List<ResourceInfoEntity>> filterResourceInfoData(GenericFilterRequestDTO<ResourceInfoEntity> genericFilterRequest, Pageable pageable) {
+        GenericSpecification<ResourceInfoEntity> resourceInfoSpec = ResourceSearchSpecification.processDynamicResourceInfoFilter(genericFilterRequest.getDataFilter());
+        Page<ResourceInfoEntity> filteredResourcesInfo = resourceInfoRepository.findAll(resourceInfoSpec, pageable);
+        GenericResponseDTO<List<ResourceInfoEntity>> genericResponse = ResponseBuilder.buildSuccessResponse(filteredResourcesInfo.getContent(), filteredResourcesInfo.getTotalElements());
+        return genericResponse;
+    }
+
     public GenericResponseDTO<?> deleteResourceById(Long id) {
         ResourceInfoEntity resourceInfo = resourceInfoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(AppExceptionConstants.REQUESTED_RESOURCE_NOT_FOUND));
-            try {
-                UserEntity resourceOwner = resourceInfo.getResourceOwner();
-                if(!ExtractAuthUser.isOwner(resourceOwner.getId())) {
-                    throw new UnAuthorizedAccessException(AppExceptionConstants.UNAUTHORIZED_ACCESS);
-                }
-                Path targetLocation = storageConfig.getUserDirectory(resourceOwner.getUsername()).resolve(resourceInfo.getResourceName());
-                resourceInfoRepository.delete(resourceInfo);
-                Files.delete(targetLocation);
-            } catch (NoSuchFileException e) {
-                throw new ResourceNotFoundException(AppExceptionConstants.REQUESTED_RESOURCE_NOT_FOUND);
-            } catch (Exception e) {
-                ResponseBuilder.buildFailureResponse(MessageCodeUtil.UNKNOWN_ERROR);
-            }
+        try {
+            UserEntity resourceOwner = resourceInfo.getResourceOwner();
+            ExtractAuthUser.isOwner(resourceOwner.getId());
+            Path targetLocation = storageConfig.getUserDirectory(resourceOwner.getUsername()).resolve(resourceInfo.getResourceName());
+            resourceInfoRepository.delete(resourceInfo);
+            Files.delete(targetLocation);
+        } catch (NoSuchFileException e) {
+            throw new ResourceNotFoundException(AppExceptionConstants.REQUESTED_RESOURCE_NOT_FOUND);
+        } catch (Exception e) {
+            ResponseBuilder.buildFailureResponse(MessageCodeUtil.UNKNOWN_ERROR);
+        }
         return ResponseBuilder.buildSuccessResponse(null);
     }
 
@@ -117,6 +141,7 @@ public class ResourceInfoServiceImpl implements ResourceInfoService {
         resourceInfo.setResourceSize(dataSize);
         resourceInfo.setResourceType(dataType);
         resourceInfo.setStatus(rawDataStatus);
+        resourceInfo.setResourceOwner(ExtractAuthUser.getCurrentUser());
         return resourceInfo;
     }
 

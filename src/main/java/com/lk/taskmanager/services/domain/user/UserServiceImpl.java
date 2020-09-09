@@ -3,16 +3,20 @@ package com.lk.taskmanager.services.domain.user;
 import com.lk.taskmanager.entities.UserEntity;
 import com.lk.taskmanager.repository.UserRepository;
 import com.lk.taskmanager.services.domain.user.dtos.UpdatePasswordRequestDTO;
-import com.lk.taskmanager.services.generic.GenericResponseDTO;
-import com.lk.taskmanager.services.generic.MessageCodeUtil;
+import com.lk.taskmanager.services.generic.GenericSpecification;
 import com.lk.taskmanager.services.generic.ResponseBuilder;
-import com.lk.taskmanager.utils.Enums;
+import com.lk.taskmanager.services.generic.dtos.GenericFilterRequestDTO;
+import com.lk.taskmanager.services.generic.dtos.GenericResponseDTO;
+import com.lk.taskmanager.utils.MessageCodeUtil;
 import com.lk.taskmanager.utils.exceptions.AppExceptionConstants;
 import com.lk.taskmanager.utils.exceptions.ResourceNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -26,47 +30,54 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Page<UserEntity> getAllUsers(Pageable pageable) {
-        return userRepository.findAll(pageable);
+    public GenericResponseDTO<List<UserEntity>> getAllUsers(Pageable pageable) {
+        Page<UserEntity> userEntities = userRepository.findAll(pageable);
+        return ResponseBuilder.buildPagedSuccessResponse(userEntities);
     }
 
     @Override
-    public UserEntity findByUsername(String username) {
+    public GenericResponseDTO<UserEntity> findByUsername(String username) {
         UserEntity userEntity = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException(AppExceptionConstants.USER_RECORD_NOT_FOUND));
-        return userEntity;
+        return ResponseBuilder.buildSuccessResponse(userEntity);
     }
 
     @Override
-    public UserEntity getUserById(Long id) {
+    public GenericResponseDTO<UserEntity> getUserById(Long id) {
         UserEntity userEntity = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(AppExceptionConstants.USER_RECORD_NOT_FOUND));
-        return userEntity;
+        return ResponseBuilder.buildSuccessResponse(userEntity);
     }
 
     @Override
-    public UserEntity createUser(UserEntity reqUserEntity) {
+    public GenericResponseDTO<UserEntity> createUser(UserEntity reqUserEntity) {
         UserEntity userEntity = new UserEntity();
-        if (userEntity.getPassword() != null) {
+        if (reqUserEntity.getPassword() != null) {
             userEntity.setPassword(passwordEncoder.encode(reqUserEntity.getPassword()));
+        }
+        Optional<UserEntity> usernameAvailable = userRepository.findByUsername(reqUserEntity.getUsername());
+        if (usernameAvailable.isPresent()) {
+            throw new ResourceNotFoundException(AppExceptionConstants.USER_NAME_NOT_AVAILABLE);
         }
         userEntity.setFullName(reqUserEntity.getFullName());
         userEntity.setPhoneNumber(reqUserEntity.getPhoneNumber());
         userEntity.setRole(reqUserEntity.getRole());
-        userEntity.setStatus(Enums.UserStatus.INACTIVE);
+        userEntity.setStatus(reqUserEntity.getStatus());
         userEntity.setUsername(reqUserEntity.getUsername());
-        return userRepository.save(userEntity);
+        userRepository.save(userEntity);
+        return ResponseBuilder.buildSuccessResponse(userEntity);
     }
 
     @Override
-    public UserEntity updateUser(UserEntity reqUserEntity) {
+    public GenericResponseDTO<UserEntity> updateUser(UserEntity reqUserEntity) {
         UserEntity userEntity = userRepository.findById(reqUserEntity.getId())
                 .orElseThrow(() -> new ResourceNotFoundException(AppExceptionConstants.USER_RECORD_NOT_FOUND));
         userEntity.setFullName(reqUserEntity.getFullName());
         userEntity.setPhoneNumber(reqUserEntity.getPhoneNumber());
         userEntity.setRole(reqUserEntity.getRole());
         userEntity.setStatus(reqUserEntity.getStatus());
-        return userRepository.save(userEntity);
+        userRepository.save(userEntity);
+        return ResponseBuilder.buildSuccessResponse(userEntity);
     }
 
     @Override
@@ -80,6 +91,14 @@ public class UserServiceImpl implements UserService {
         userEntity.setPassword(passwordEncoder.encode(updatePasswordRequest.getNewPassword()));
         userRepository.save(userEntity);
         return ResponseBuilder.buildSuccessResponse(null);
+    }
+
+    @Override
+    public GenericResponseDTO<List<UserEntity>> filterUserData(GenericFilterRequestDTO<UserEntity> genericFilterRequest, Pageable pageable) {
+        GenericSpecification<UserEntity> userSpec = UserSearchSpecification.processDynamicUserFilter(genericFilterRequest);
+        Page<UserEntity> filteredUsers = userRepository.findAll(userSpec, pageable);
+        GenericResponseDTO<List<UserEntity>> genericResponse = ResponseBuilder.buildPagedSuccessResponse(filteredUsers);
+        return genericResponse;
     }
 
 }

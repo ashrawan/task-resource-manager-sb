@@ -1,12 +1,12 @@
 package com.lk.taskmanager.services.auth;
 
-import com.lk.taskmanager.services.auth.dtos.AuthenticationDTO;
+import com.lk.taskmanager.services.auth.dtos.AuthResponseDTO;
 import com.lk.taskmanager.services.auth.dtos.LoginRequestDTO;
-import com.lk.taskmanager.services.generic.GenericResponseDTO;
+import com.lk.taskmanager.services.generic.dtos.GenericResponseDTO;
 
 public interface AuthenticationService {
 
-    AuthenticationDTO loginUser(LoginRequestDTO loginRequest);
+    GenericResponseDTO<AuthResponseDTO> loginUser(LoginRequestDTO loginRequest);
 
     GenericResponseDTO<?> forgotPassword(String userEmail);
 

@@ -1,6 +1,6 @@
 package com.lk.taskmanager.utils.exceptions;
 
-public class AppExceptionConstants {
+public final class AppExceptionConstants {
 
     // Auth Exception
     public static final String BAD_LOGIN_CREDENTIALS = "Invalid username/password supplied";
@@ -8,6 +8,7 @@ public class AppExceptionConstants {
 
     // User Exception
     public static final String USER_RECORD_NOT_FOUND = "User doesn't exists";
+    public static final String USER_NAME_NOT_AVAILABLE = "This username isn't available";
     public static final String OLD_PASSWORD_DOESNT_MATCH = "Old and New Password doesn't match";
 
     // Task Exception

@@ -1,6 +1,8 @@
 package com.lk.taskmanager.apis;
 
-import com.lk.taskmanager.utils.exceptions.ExceptionResponse;
+import com.lk.taskmanager.services.generic.ResponseBuilder;
+import com.lk.taskmanager.services.generic.dtos.GenericResponseDTO;
+import com.lk.taskmanager.utils.MessageCodeUtil;
 import com.lk.taskmanager.utils.exceptions.LKAppException;
 import com.lk.taskmanager.utils.exceptions.ResourceNotFoundException;
 import com.lk.taskmanager.utils.exceptions.UnAuthorizedAccessException;
@@ -21,39 +23,45 @@ public class ExceptionHandlerController {
     public ResponseEntity<?> resourceNotFoundException(final ResourceNotFoundException ex, final HttpServletRequest request) {
 
         log.info("DataNotFoundException handled");
-        ExceptionResponse exceptionResponse = new ExceptionResponse();
-        exceptionResponse.setMessage(ex.getMessage());
-        exceptionResponse.setApiUrl(request.getRequestURI());
-        return new ResponseEntity<>(exceptionResponse, HttpStatus.NOT_FOUND);
+        GenericResponseDTO<String> genericResponse = ResponseBuilder.buildResponse(MessageCodeUtil.NOT_FOUND, ex.getMessage());
+        genericResponse.setHttpStatus(HttpStatus.NOT_FOUND);
+        return new ResponseEntity<>(genericResponse, genericResponse.getHttpStatus());
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<?> methodArgumentTypeMismatchException(final MethodArgumentTypeMismatchException ex, final HttpServletRequest request) {
 
         log.info("MethodArgumentTypeMismatchException handled");
-        ExceptionResponse exceptionResponse = new ExceptionResponse();
-        exceptionResponse.setMessage(ex.getMessage());
-        exceptionResponse.setApiUrl(request.getRequestURI());
-        return new ResponseEntity<>(exceptionResponse, HttpStatus.BAD_REQUEST);
+        GenericResponseDTO<String> genericResponse = ResponseBuilder.buildResponse(MessageCodeUtil.REQUEST_MISMATCH, ex.getMessage());
+        genericResponse.setHttpStatus(HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(genericResponse, genericResponse.getHttpStatus());
     }
 
     @ExceptionHandler(UnAuthorizedAccessException.class)
     public ResponseEntity<?> unAuthorizedAccessException(final UnAuthorizedAccessException ex, final HttpServletRequest request) {
 
         log.info("UnAuthorizedChannelAccessException handled");
-        ExceptionResponse exceptionResponse = new ExceptionResponse();
-        exceptionResponse.setMessage(ex.getMessage());
-        exceptionResponse.setApiUrl(request.getRequestURI());
-        return new ResponseEntity<>(exceptionResponse, HttpStatus.UNAUTHORIZED);
+        GenericResponseDTO<String> genericResponse = ResponseBuilder.buildResponse(MessageCodeUtil.UNAUTHORIZED, ex.getMessage());
+        genericResponse.setHttpStatus(HttpStatus.UNAUTHORIZED);
+        return new ResponseEntity<>(genericResponse, genericResponse.getHttpStatus());
     }
 
     @ExceptionHandler(LKAppException.class)
     public ResponseEntity<?> globalAppException(final LKAppException ex, final HttpServletRequest request) {
 
-        log.info("LKAppException handled");
-        ExceptionResponse exceptionResponse = new ExceptionResponse();
-        exceptionResponse.setMessage(ex.getMessage());
-        exceptionResponse.setApiUrl(request.getRequestURI());
-        return new ResponseEntity<>(exceptionResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+        log.info("LKAppException handled", ex.getMessage());
+        GenericResponseDTO<String> genericResponse = ResponseBuilder.buildResponse(MessageCodeUtil.UNKNOWN_ERROR, ex.getMessage());
+        genericResponse.setHttpStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(genericResponse, genericResponse.getHttpStatus());
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<?> globalAppException(final RuntimeException ex, final HttpServletRequest request) {
+
+        log.info("Runtime Exception occured", ex.getMessage());
+        ex.printStackTrace();
+        GenericResponseDTO<String> genericResponse = ResponseBuilder.buildResponse(MessageCodeUtil.UNKNOWN_ERROR, ex.getMessage());
+        genericResponse.setHttpStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(genericResponse, genericResponse.getHttpStatus());
     }
 }
